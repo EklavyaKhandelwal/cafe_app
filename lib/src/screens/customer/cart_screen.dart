@@ -27,7 +27,7 @@ class _CartScreenState extends State<CartScreen> {
   late Razorpay _razorpay;
   Order? _pendingOrder;
   // Removed _selectedPaymentMethod as only Razorpay will be available
-  final String serverUrl = 'http://192.168.29.253:5000/create-order';
+ final String serverUrl = 'https://cafe-backend-f44f.onrender.com/create-order'; 
 
   @override
   void initState() {
