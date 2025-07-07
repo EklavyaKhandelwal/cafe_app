@@ -8,15 +8,15 @@ app.use(cors());
 app.use(bodyParser.json());
 
 const razorpay = new Razorpay({
-  key_id: "YOUR_KEY_ID",
-  key_secret: "YOUR_SECRET",
+  key_id: "rzp_live_Y7TfZS3eA2vI0U",
+  key_secret: "KMJ7t7gAlgTbNCMMw1drIbWL",
 });
 
 app.post("/create-order", async (req, res) => {
   const options = {
     amount: req.body.amount * 100, // amount in the smallest currency unit
     currency: "INR",
-    receipt: "order_rcptid_11",
+    receipt: req.body.receipt, // Use dynamic receipt from frontend
   };
 
   try {

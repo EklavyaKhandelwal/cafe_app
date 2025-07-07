@@ -26,7 +26,7 @@ class _CartScreenState extends State<CartScreen> {
   String? _tableError;
   late Razorpay _razorpay;
   Order? _pendingOrder;
-  String _selectedPaymentMethod = 'Razorpay'; // Track selected payment method
+  // Removed _selectedPaymentMethod as only Razorpay will be available
   final String serverUrl = 'http://192.168.29.253:5000/create-order';
 
   @override
@@ -64,7 +64,7 @@ class _CartScreenState extends State<CartScreen> {
         Uri.parse(serverUrl),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
-          'amount': order.total * 100,
+          'amount': order.total, // Remove * 100, backend handles conversion
           'currency': 'INR',
           'receipt': order.id,
         }),
@@ -101,7 +101,7 @@ class _CartScreenState extends State<CartScreen> {
     }
 
     var options = {
-      'key': 'rzp_test_YourKeyHere', // Replace with your Razorpay Test Key
+      'key': 'rzp_live_Y7TfZS3eA2vI0U', // Replace with your Razorpay Test Key
       'order_id': serverOrder['order_id'],
       'amount': serverOrder['amount'],
       'currency': serverOrder['currency'],
@@ -111,8 +111,11 @@ class _CartScreenState extends State<CartScreen> {
         'contact': '9876543210',
         'email': 'eklavya@example.com',
       },
-      'external': {
-        'wallets': ['gpay'],
+      'method': {
+        'upi': true,      // Enable UPI
+        'wallet': true,   // Enable wallets (Google Pay, PhonePe, Paytm, etc.)
+        'card': true,     // Enable card payments
+        'netbanking': true // Enable net banking
       },
     };
 
@@ -195,7 +198,7 @@ class _CartScreenState extends State<CartScreen> {
     }
   }
 
-  Future<void> _confirmOrder(BuildContext context, CartProvider cartProvider, User user, String paymentMethod) async {
+  Future<void> _confirmOrder(BuildContext context, CartProvider cartProvider, User user) async { // Removed paymentMethod parameter
     _validateInputs();
     if (_nameError != null || _tableError != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -224,7 +227,7 @@ class _CartScreenState extends State<CartScreen> {
       specialRequest: specialRequestController.text.isNotEmpty ? specialRequestController.text : null,
       timestamp: DateTime.now(),
       total: cartProvider.calculateTotal(),
-      paymentMethod: paymentMethod,
+      paymentMethod: 'Razorpay', // Hardcoded to Razorpay
     );
 
     final confirmed = await showDialog<bool>(
@@ -241,7 +244,7 @@ class _CartScreenState extends State<CartScreen> {
           ),
         ),
         content: Text(
-          'Are you sure you want to place this order for ₹${cartProvider.calculateTotal().toStringAsFixed(2)} using $paymentMethod?',
+          'Are you sure you want to place this order for ₹${cartProvider.calculateTotal().toStringAsFixed(2)} using Razorpay?', // Updated text
           style: GoogleFonts.lora(color: const Color(0xFF3A2A2A), fontSize: 16),
         ),
         actions: [
@@ -271,11 +274,7 @@ class _CartScreenState extends State<CartScreen> {
     if (confirmed == true) {
       setState(() => _isPlacingOrder = true);
       _pendingOrder = order;
-      if (paymentMethod == 'Razorpay') {
-        _startPayment(order, cartProvider);
-      } else if (paymentMethod == 'COD') {
-        await _placeOrderAfterPayment(order);
-      }
+      _startPayment(order, cartProvider); // Directly start Razorpay payment
     }
   }
 
@@ -412,125 +411,92 @@ class _CartScreenState extends State<CartScreen> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Card(
-            color: const Color(0xFFFDF6E3),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-            elevation: 4,
-            child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: InputDecoration(
-                labelText: 'Customer Name',
-                labelStyle: GoogleFonts.lora(color: const Color(0xFF3A2A2A)),
-                errorText: _nameError,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Color(0xFF4A3726)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE2B570), width: 2),
-                ),
-                filled: true,
-                fillColor: const Color(0xFFF5E6CC),
-              ),
-              style: GoogleFonts.lora(color: const Color(0xFF3A2A2A)),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: tableController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Table Number',
-                labelStyle: GoogleFonts.lora(color: const Color(0xFF3A2A2A)),
-                errorText: _tableError,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderSide: const BorderSide(color: Color(0xFF4A3726)),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFFE2B570), width: 2),
-                ),
-                filled: true,
-                fillColor: const Color(0xFFF5E6CC),
-              ),
-              style: GoogleFonts.lora(color: const Color(0xFF3A2A2A)),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          color: const Color(0xFFFDF6E3),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                ElevatedButton.icon(
-                  onPressed: _isPlacingOrder
-                      ? null
-                      : () {
-                    setState(() {
-                      _selectedPaymentMethod = 'Razorpay';
-                    });
-                  },
-                  icon: const Icon(Icons.payment, color: Color(0xFFF5E6CC)),
-                  label: Text(
-                    'Razorpay',
-                    style: GoogleFonts.lora(
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFFF5E6CC),
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Customer Name',
+                    labelStyle: GoogleFonts.lora(color: const Color(0xFF3A2A2A)),
+                    errorText: _nameError,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFF4A3726)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE2B570), width: 2),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF5E6CC),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _selectedPaymentMethod == 'Razorpay'
-                        ? Colors.green.shade900
-                        : Colors.green.shade700,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    elevation: _selectedPaymentMethod == 'Razorpay' ? 8 : 2,
-                  ),
+                  style: GoogleFonts.lora(color: const Color(0xFF3A2A2A)),
                 ),
-                ElevatedButton.icon(
-                  onPressed: _isPlacingOrder
-                      ? null
-                      : () {
-                    setState(() {
-                      _selectedPaymentMethod = 'COD';
-                    });
-                  },
-                  icon: const Icon(Icons.money, color: Color(0xFFF5E6CC)),
-                  label: Text(
-                    'Cash on Delivery',
-                    style: GoogleFonts.lora(
-                      fontWeight: FontWeight.w500,
-                      color: const Color(0xFFF5E6CC),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: tableController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Table Number',
+                    labelStyle: GoogleFonts.lora(color: const Color(0xFF3A2A2A)),
+                    errorText: _tableError,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderSide: const BorderSide(color: Color(0xFF4A3726)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFFE2B570), width: 2),
+                    ),
+                    filled: true,
+                    fillColor: const Color(0xFFF5E6CC),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _selectedPaymentMethod == 'COD'
-                        ? Colors.blue.shade900
-                        : Colors.blue.shade700,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 12),
-                    elevation: _selectedPaymentMethod == 'COD' ? 8 : 2,
+                  style: GoogleFonts.lora(color: const Color(0xFF3A2A2A)),
+                ),
+                const SizedBox(height: 16),
+                // Removed the Row with payment method selection buttons,
+                // as only Razorpay is available now.
+                Center( // Center the single payment button
+                  child: ElevatedButton.icon(
+                    onPressed: _isPlacingOrder ? null : () {
+                      // No need to setState for _selectedPaymentMethod,
+                      // as it's implicitly Razorpay now.
+                    },
+                    icon: const Icon(Icons.payment, color: Color(0xFFF5E6CC)),
+                    label: Text(
+                      'Pay with Razorpay',
+                      style: GoogleFonts.lora(
+                        fontWeight: FontWeight.w500,
+                        color: const Color(0xFFF5E6CC),
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green.shade700, // Always Razorpay style
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 12),
+                      elevation: 8, // Always elevated
+                    ),
                   ),
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
-    ),
-    ),
     );
   }
 
@@ -589,7 +555,7 @@ class _CartScreenState extends State<CartScreen> {
             const SizedBox(height: 15),
             ElevatedButton(
               onPressed: isButtonEnabled
-                  ? () => _confirmOrder(context, cartProvider, user!, _selectedPaymentMethod)
+                  ? () => _confirmOrder(context, cartProvider, user!) // Removed paymentMethod argument
                   : null,
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFE2B570),
